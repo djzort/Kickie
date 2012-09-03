@@ -133,6 +133,22 @@ returns the disk extrapart info
 
 sub get_disk_extrapart { return _check_disk_extrapart( shift ) }
 
+=head2 get_efi32file
+
+returns the efi32 boot file name, as in the 'filename' field in dhcp
+
+=cut
+
+sub get_efi32file { return _check_efi32file( shift ) }
+
+
+=head2 get_efi64file
+
+returns the efi64 boot file name, as in the 'filename' field in dhcp
+
+=cut
+
+sub get_efi64file { return _check_efi64file( shift ) }
 
 =head2 get_gateway
 
@@ -738,6 +754,52 @@ sub _check_disk_type {
     }
 
     return $self->{_saved}->{disk_type} = $disk_type
+
+}
+
+=head2 _check_efi32file
+
+=cut
+
+sub _check_efi32file {
+
+    my $self = shift;
+
+    # return the cached version if needed
+    return $self->{_saved}->{efi32file}
+        if exists $self->{_saved}->{efi32file};
+
+    my $trans      = $self->{trans};
+
+    my $os_versions = $self->{os_versions};
+    my $osver = _check_osver($self);
+
+    my $efi32file = $os_versions->{$osver}{efi32file};
+
+    return $self->{_saved}->{efi32file} = $efi32file
+
+}
+
+=head2 _check_efi64file
+
+=cut
+
+sub _check_efi64file {
+
+    my $self = shift;
+
+    # return the cached version if needed
+    return $self->{_saved}->{efi64file}
+        if exists $self->{_saved}->{efi64file};
+
+    my $trans      = $self->{trans};
+
+    my $os_versions = $self->{os_versions};
+    my $osver = _check_osver($self);
+
+    my $efi64file = $os_versions->{$osver}{efi64file};
+
+    return $self->{_saved}->{efi64file} = $efi64file
 
 }
 

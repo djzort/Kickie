@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# $Id: Kickie.pm,v 1.6 2011/07/22 00:28:16 deanh Exp $
+# $Id: Kickstart.pm,v 1.10 2012/07/02 00:41:34 deanh Exp $
 package Kickie;
 
 use strict;
@@ -121,7 +121,7 @@ sub add {
     $files       = {%$files};
 
    # convert the mac address to a O::U::MAC object, which will also validate and normalise it
-    $leaseparams->{mac} = OIE::Utils::MAC->new( $leaseparams->{mac} );
+    $leaseparams->{mac} = NetAddr::MAC->new( $leaseparams->{mac} );
 
     $leaseparams->{mac}->is_eui48
       or croak 'Mac must be EUI48';
@@ -152,7 +152,7 @@ sub remove {
     # validate input
     my $mac = shift;
 
-    # convert the mac address to a O::U::MAC object, which will also validate and normalise it
+    # convert the mac address to a NetAddr::MAC object, which will also validate and normalise it
     $mac = NetAddr::MAC->new($mac)
       or croak "Mac was bad: $@";
 
@@ -288,7 +288,7 @@ sub _set_dhcpfile {
 Adds a lease for the details provided in I<%params>. Required values are...
 
 =over 4
- mac - the mac address as an OIE::Utils::MAC object
+ mac - the mac address as an NetAddr::MAC object
  ip - the ip address of the leasee
  gw - the router or gateway
  name - the hostname given to the leasee
@@ -308,12 +308,14 @@ sub _add_lease {
 
     my %values = (
 
-        MACADDR     => uc $mac->as_basic,
-        DHCPMACADDR => uc $mac->as_microsoft,
-        IPADDR      => $params->{ip},
-        HOSTNAME    => $params->{name},
-        KSHOST      => $params->{kshost},
-        FILENAME    => $params->{file},
+        MACADDR       => uc $mac->as_basic,
+        DHCPMACADDR   => uc $mac->as_microsoft,
+        IPADDR        => $params->{ip},
+        HOSTNAME      => $params->{name},
+        KSHOST        => $params->{kshost},
+        PXEFILENAME   => $params->{file},
+        EFI32FILENAME => $params->{efi32file} || $params->{file},
+        EFI64FILENAME => $params->{efi64file} || $params->{file},
 
     );
 
@@ -344,7 +346,7 @@ sub _add_lease {
 
 Removes the files written out to help the pxe-boot
 
-I<$mac> is the mac address as an OIE::Utils::MAC object
+I<$mac> is the mac address as an NetAddr::MAC object
 
 =cut
 
@@ -381,7 +383,7 @@ sub _cleanup {
 
 =head2 _add_timer($mac[,$time])
 
-Adds an timer to clear the profile for I<$mac> (OIE::Utils::MAC object) in 20 mins or I<$time> seconds
+Adds an timer to clear the profile for I<$mac> (NetAddr::MAC object) in 20 mins or I<$time> seconds
 
 Currently this sub works by dropping a job in to the at daemon
 
@@ -391,7 +393,7 @@ sub _add_timer {
 
     # load and normalise mac
     my $mac = shift;
-    $mac = OIE::Utils::MAC->new($mac)
+    $mac = NetAddr::MAC->new($mac)
       unless ref $mac;
 
     my $time = shift || 20 * 60;
@@ -480,7 +482,7 @@ sub _merge {
     my $values = shift;
     return unless ( $tmpl or ref $values eq 'HASH' );
 
-    1 while $tmpl =~ s/%([A-Z]+)%/$values->{uc $1}/ge;
+    1 while $tmpl =~ s/%([A-Z0-9]+)%/$values->{uc $1}/ge;
 
     return $tmpl;
 
