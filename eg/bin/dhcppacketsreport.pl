@@ -6,6 +6,8 @@
 ## Obviously there is a lot of human interpretation needed for the report, nor would it be usefull on a busy dhcp server,
 ## we only use dhcp in our VLANs for kickstart installs so it works well enough
 
+## You will need oui.txt from http://standards.ieee.org/develop/regauth/oui/oui.txt
+
 use strict;
 use warnings;
 use List::Util qw(max first);
@@ -19,6 +21,22 @@ die "couldnt find a mailer" unless $mailer;
 
 my $me = hostname();
 my $from      = "autobuild\@$me";
+
+my %oui;
+my $ouifile = ( $ARGV[0] eq '-d' ) ? $ARGV[1] : $ARGV[0];
+if ($ouifile && -f $ouifile) {
+	open my $fh, '<', $ouifile
+	    or die "failed to open $ouifile: $!";
+	my @lines = grep {m/\(base 16\)/} <$fh>;
+	close $fh;
+	%oui = map {m/^(......)\s+\(base 16\)\s+(.+)\s*$/; uc($1),$2} @lines;
+}
+sub oui_vendor {
+	my $mac = shift or return 'UNKNOWN';
+	$mac =~ s/[^A-Fa-f0-9]//g; # remove non-hex
+	$mac =~ s/^(......).*/$1/; # first 6 characters
+        return $oui{uc($mac)} || 'UNKNOWN'
+}
 
 my %stats; # we collect the stats in this
 
@@ -43,7 +61,7 @@ close $fh;
 
 ## now assemble the the report
 
-my $csv  = "MAC, PACKET, COUNT\n";
+my $csv  = "VENDOR, MAC, PACKET, COUNT\n";
 
 # find the highest values, so they can be sorted on
 my %done;
@@ -53,8 +71,10 @@ while (my ($key, $value) = each %stats) {
 
 for $mac (sort {$done{$b} <=> $done{$a}} keys %done) {
 
+	my $vendor = oui_vendor($mac);
+
         for $packet (sort {$a cmp $b} keys %{$stats{$mac}}) {
-                $csv .= "$mac, $packet, ".$stats{$mac}{$packet}."\n";
+                $csv .= "$vendor, $mac, $packet, ".$stats{$mac}{$packet}."\n";
         }
 
 }
@@ -103,5 +123,4 @@ EOF
         }
 
     }
-
-1;
+1
